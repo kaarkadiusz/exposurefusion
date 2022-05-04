@@ -27,8 +27,6 @@ int main(int argc, char** argv)
 	vector<Mat> images255;
 	vector<Mat> images1;
 
-	vector<Mat> S;
-	vector<Mat> WE;
 	vector<Mat> W;
 	vector<vector<Mat>> pyr;
 	double contrast_parm = 1.0;
@@ -57,13 +55,32 @@ int main(int argc, char** argv)
 	if (contrast_parm > 0) {
 		vector<Mat> C;
 		contrast(images255, C);
-		//cout << W[0].type() << endl << C[0].type();
-		cout << (double)(C[0].at<uchar>(10, 10) / 255.0) << " ";
 		for (int i = 0;i < N;i++) {
 			for (int y = 0;y < c;y++) {
 				for (int x = 0; x < r;x++) {
-					//W[i].at<double>(x, y) = W[i].at<double>(x, y) * pow(C[i].at<double>(x, y), contrast_parm);
-					//cout << (double)(C[i].at<uchar>(x, y)/255.0)<<" ";
+					W[i].at<double>(x, y) = W[i].at<double>(x, y) * pow((double)C[i].at<uchar>(x, y), contrast_parm);
+				}
+			}
+		}
+	}
+	if (saturation_parm > 0) {
+		vector<Mat> S;
+		saturation(images255, S);
+		for (int i = 0;i < N;i++) {
+			for (int y = 0;y < c;y++) {
+				for (int x = 0; x < r;x++) {
+					W[i].at<double>(x, y) = W[i].at<double>(x, y) * pow((double)S[i].at<uchar>(x, y), saturation_parm);
+				}
+			}
+		}
+	}
+	if (well_exposedness_parm > 0) {
+		vector<Mat> WE;
+		saturation(images255, WE);
+		for (int i = 0;i < N;i++) {
+			for (int y = 0;y < c;y++) {
+				for (int x = 0; x < r;x++) {
+					W[i].at<double>(x, y) = W[i].at<double>(x, y) * pow((double)WE[i].at<uchar>(x, y), well_exposedness_parm);
 				}
 			}
 		}
