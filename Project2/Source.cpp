@@ -74,10 +74,10 @@ int main(int argc, char** argv)
 	if (contrast_parm > 0) {
 		vector<Mat> C;
 		contrast(images255, C);
-		for (int i = 0; i < C.size(); i++) {
-			String path = parser.get<String>("@input") + "/weights";
-			imwrite(path + "/contrast" + to_string(i + 1) + ".png", C[i] * 255);
-		}
+		//for (int i = 0; i < C.size(); i++) {
+		//	String path = parser.get<String>("@input") + "/weights";
+		//	imwrite(path + "/contrast" + to_string(i + 1) + ".png", C[i] * 255);
+		//}
 		for (int i = 0;i < N;i++) {
 			for (int x = 0;x < r;x++) {
 				for (int y = 0; y < c;y++) {
@@ -91,10 +91,10 @@ int main(int argc, char** argv)
 	if (saturation_parm > 0) {
 		vector<Mat> S;
 		saturation(images255, S);
-		for (int i = 0; i < S.size(); i++) {
-			String path = parser.get<String>("@input") + "/weights";
-			imwrite(path + "/saturation" + to_string(i + 1) + ".png", S[i] * 255);
-		}
+		//for (int i = 0; i < S.size(); i++) {
+		//	String path = parser.get<String>("@input") + "/weights";
+		//	imwrite(path + "/saturation" + to_string(i + 1) + ".png", S[i] * 255);
+		//}
 		for (int i = 0;i < N;i++) {
 			for (int x = 0;x < r;x++) {
 				for (int y = 0; y < c;y++) {
@@ -108,10 +108,10 @@ int main(int argc, char** argv)
 	if (well_exposedness_parm > 0) {
 		vector<Mat> WE;
 		well_exposedness(images255, WE);
-		for (int i = 0; i < WE.size(); i++) {
-			String path = parser.get<String>("@input") + "/weights";
-			imwrite(path + "/well_exposedness" + to_string(i + 1) + ".png", WE[i] * 255);
-		}
+		//for (int i = 0; i < WE.size(); i++) {
+		//	String path = parser.get<String>("@input") + "/weights";
+		//	imwrite(path + "/well_exposedness" + to_string(i + 1) + ".png", WE[i] * 255);
+		//}
 		for (int i = 0;i < N;i++) {
 			for (int x = 0;x < r;x++) {
 				for (int y = 0; y < c;y++) {
@@ -140,10 +140,10 @@ int main(int argc, char** argv)
 	}
 	cout << " Done" << endl;
 
-	for (int i = 0; i < W.size(); i++) {
-		String path = parser.get<String>("@input") + "/weights";
-		imwrite(path + "/weight" + to_string(i + 1) + ".png", W[i] * 255);
-	}
+	//for (int i = 0; i < W.size(); i++) {
+	//	String path = parser.get<String>("@input") + "/weights";
+	//	imwrite(path + "/weight" + to_string(i + 1) + ".png", W[i] * 255);
+	//}
 
 	cout << "Multiresolution blending...";
 	Mat input = Mat::zeros(r, c, CV_64FC3);
