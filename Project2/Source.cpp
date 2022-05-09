@@ -6,9 +6,11 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 
 using namespace cv;
 using namespace std;
+namespace fs = std::filesystem;
 
 double roundoff(double value, unsigned char prec)
 {
@@ -16,18 +18,14 @@ double roundoff(double value, unsigned char prec)
 	return round(value * pow_10) / pow_10;
 }
 
-void loadExposureSeq(String, vector<Mat>&, vector<float>&);
+void load_images2(String, vector<Mat>&);
 void load_images(String, vector<Mat>&);
 void contrast(vector<Mat>, vector<Mat>&);
 void saturation(vector<Mat>, vector<Mat>&);
 void well_exposedness(vector<Mat>, vector<Mat>&);
-void gaussian_pyramid(vector<Mat>, vector<vector<Mat>>&);
 void gaussian_pyramid(Mat, vector<Mat>&);
-void laplacian_pyramid(vector<Mat>, vector<vector<Mat>>&);
 void laplacian_pyramid(Mat, vector<Mat>&);
-void downsample(vector<Mat>, vector<Mat>&);
 void downsample(Mat, Mat&);
-void upsample(vector<Mat>, vector<Mat>&, int[2]);
 void upsample(Mat, Mat&, int[2]);
 void normalise_weights(vector<Mat>, vector<Mat>&);
 void reconstruct_laplacian_pyramid(vector<Mat>, Mat&);
@@ -35,22 +33,28 @@ void reconstruct_laplacian_pyramid(vector<Mat>, Mat&);
 int main(int argc, char** argv)
 {
 	cv::utils::logging::setLogLevel(cv::utils::logging::LogLevel::LOG_LEVEL_SILENT);
-	CommandLineParser parser(argc, argv, "{@input | | Input directory that contains images and exposure times. }");
-
-	//! [Load images and exposure times]
+	const String keys =
+		"{@input | | Input directory that contains images and exposure times. }"
+		"{@contrast | 1 | Contrast parameter }"
+		"{@saturation | 1 | Saturation parameter }"
+		"{@well_exposedness | 1 | Well exposedness parameter }"
+		;
+	CommandLineParser parser(argc, argv, keys);
 
 	vector<Mat> images255;
 	vector<Mat> images1;
 
 	vector<Mat> W;
-	double contrast_parm = 1.0;
-	double saturation_parm = 1.0;
-	double well_exposedness_parm = 1.0;
+	double contrast_parm = parser.get<double>("@contrast");
+	double saturation_parm = parser.get<double>("@saturation");
+	double well_exposedness_parm = parser.get<double>("@well_exposedness");
+
+	cout << "Reading sequence...";
+	//load_images(parser.get<String>("@input"), images255);
 	load_images(parser.get<String>("@input"), images255);
 	int r = images255[0].size().height;
 	int c = images255[0].size().width;
 	int N = images255.size();
-	cout << "rows: " << r << " cols: " << c << " N: " << N << " channels: " << images255[0].channels() << endl;
 
 	for (int i = 0; i < N; i++) {
 		Mat result = images255[i];
@@ -58,27 +62,9 @@ int main(int argc, char** argv)
 		result /= 255.0;
 		images1.push_back(result);
 	}
-	//vector<Mat> pyr;
-	//gaussian_pyramid(images1[0], pyr);
-	//for (int i = 0;i < pyr.size();i++) {
-	//	cout << "[ " << (double)pyr[i].at<Vec3d>(0, 0)[2] << " " << (double)pyr[i].at<Vec3d>(0, 0)[1] << " " << (double)pyr[i].at<Vec3d>(0, 0)[0] << " ]" << endl;
-	//}
-	//cout << endl;
-	//cout << "[ " << (double)pyr[1].at<Vec3d>(0, 0)[2] << " " << (double)pyr[1].at<Vec3d>(0, 0)[1] << " " << (double)pyr[1].at<Vec3d>(0, 0)[0] << " ]" << endl;
-	//cout << "[ " << (double)images1[0].at<Vec3d>(0, 0)[2] << " " << (double)images1[0].at<Vec3d>(0, 0)[1] << " " << (double)images1[0].at<Vec3d>(0, 0)[0] << " ]" << endl;
-	//cout << "[ " << (double)images255[0].at<Vec3b>(0, 0)[2] / 255.0 << " " << (double)images255[0].at<Vec3b>(0, 0)[1] / 255.0 << " " << (double)images255[0].at<Vec3b>(0, 0)[0] / 255.0 << " ]" << endl;
+	cout << " Done" << endl;
 
-	//vector<Mat> pyr;
-	//laplacian_pyramid(images1[0], pyr);
-	////images255[0].convertTo(pyr[0], CV_64FC3, 1.0 / 255.0);
-	//for (int i = 0;i < pyr.size();i++) {
-	//	cout << "[ " << (double)pyr[i].at<Vec3d>(0, 0)[2] << " " << (double)pyr[i].at<Vec3d>(0, 0)[1] << " " << (double)pyr[i].at<Vec3d>(0, 0)[0] << " ]" << endl;
-	//}
-	//cout << endl;
-	//cout << "[ " << (double)pyr[1].at<Vec3d>(0, 0)[2] << " " << (double)pyr[1].at<Vec3d>(0, 0)[1] << " " << (double)pyr[1].at<Vec3d>(0, 0)[0] << " ]" << endl;
-	//cout << "[ " << (double)images1[0].at<Vec3d>(0, 0)[2] << " " << (double)images1[0].at<Vec3d>(0, 0)[1] << " " << (double)images1[0].at<Vec3d>(0, 0)[0] << " ]" << endl;
-	//cout << "[ " << (double)images255[0].at<Vec3b>(0, 0)[2] / 255.0 << " " << (double)images255[0].at<Vec3b>(0, 0)[1] / 255.0 << " " << (double)images255[0].at<Vec3b>(0, 0)[0] / 255.0 << " ]" << endl;
-
+	cout << r << "x" << c << " N: " << N << endl;
 
 	for (int i = 0; i < N; i++) {
 		Mat result = Mat(r, c, CV_64F, Scalar(1));
@@ -128,7 +114,6 @@ int main(int argc, char** argv)
 	for (int i = 0;i < N;i++) {
 		for (int x = 0;x < r;x++) {
 			for (int y = 0; y < c;y++) {
-				//W[i].at<double>(x, y) += 0.000000000001;
 				sum.at<double>(x, y) += W[i].at<double>(x, y);
 			}
 		}
@@ -143,12 +128,11 @@ int main(int argc, char** argv)
 	}
 	cout << " Done" << endl;
 
-
+	cout << "Multiresolution blending...";
 	Mat input = Mat::zeros(r, c, CV_64FC3);
 	vector<Mat> pyr;
 	gaussian_pyramid(input, pyr);
 	int nlev = pyr.size();
-	//cout << "[ " << (double)images1[0].at<Vec3d>(0, 0)[2] << " " << (double)images1[0].at<Vec3d>(0, 0)[1] << " " << (double)images1[0].at<Vec3d>(0, 0)[0] << " ]" << endl;
 
 	for (int i = 0;i < N;i++) {
 		vector<Mat> pyrW;
@@ -168,52 +152,41 @@ int main(int argc, char** argv)
 			pyr[j] = pyr[j] + result;
 		}
 	}
-	
-	//for (int i = 0;i < pyr.size();i++) {
-	//	cout << "[ " << (double)pyr[i].at<Vec3d>(0, 0)[2] << " " << (double)pyr[i].at<Vec3d>(0, 0)[1] << " " << (double)pyr[i].at<Vec3d>(0, 0)[0] << " ]" << endl;
-	//}
+	cout << " Done" << endl;
+
+	cout << "Reconstructing pyrmid...";
 	Mat R;
 	reconstruct_laplacian_pyramid(pyr, R);
+	cout << " Done" << endl;
 
-	//cout << "[ " << (double)pyr[7].at<Vec3d>(2, 2)[1] << " " << (double)pyr[6].at<Vec3d>(2, 2)[1] << " " << (double)pyr[7].at<Vec3d>(2, 2)[1] << " ]" << endl;
-	//cout << R.rows << " " << R.cols << " "<<R.channels()<<endl;
-
-	//cout << "[ " << (double)R.at<Vec3d>(0, 0)[2] << " " << (double)R.at<Vec3d>(0, 0)[1] << " " << (double)R.at<Vec3d>(0, 0)[0] << " ]" << endl;
-
-	/*for (int x = 0;x < R.rows;x++) {
-		for (int y = 0; y < R.cols;y++) {
-			cout << "[ " << (double)R.at<Vec3d>(x, y)[2] << " " << (double)R.at<Vec3d>(x, y)[1] << " " << (double)R.at<Vec3d>(x, y)[0] << " ]" << endl;
-		}
-	}*/
-
-	imwrite(parser.get<String>("@input") + "/myfusion.png", R * 255);
-	//cout << (double)pyr[7].at<Vec3d>(0, 0)[2] << " " << (double)pyr[7].at<Vec3d>(0, 0)[1] << " " << (double)pyr[7].at<Vec3d>(0, 0)[0] << endl;
-	//! [Write results]
-	//imwrite(parser.get<String>("@input") + "/fusion.png", fusion * 255);
-	//! [Write results]
+	cout << "Writing image...";
+	imwrite(parser.get<String>("@input") + "/fusion.png", R * 255);
+	cout << " Done" << endl;
 
 	return 0;
 }
 
-void loadExposureSeq(String path, vector<Mat>& images, vector<float>& times)
-{
-	path = path + "/";
-	ifstream list_file((path + "list.txt").c_str());
-	string name;
-	float val;
-	while (list_file >> name >> val) {
-		Mat img = imread(path + name);
-		images.push_back(img);
-		times.push_back(1 / val);
-	}
-	list_file.close();
-}
 void load_images(String path, vector<Mat>& images)
+{
+	for (const auto& entry : fs::directory_iterator(path + "sequence\\"))
+	{
+		if (entry.is_regular_file()) 
+		{
+			//cout << entry.path().string() << endl;
+			Mat img = imread(entry.path().string(), IMREAD_COLOR);
+			images.push_back(img);
+		}
+		//String s = entry.path().string();
+		//std::cout << s<<" "<< s.compare(s.length() - 3, 3, "jpg") << " " << std::endl;
+	}
+}
+void load_images2(String path, vector<Mat>& images)
 {
 	path = path + "/";
 	ifstream list_file((path + "list.txt").c_str());
 	string name;
 	while (list_file >> name) {
+		cout << path + name << endl;
 		Mat img = imread(path + name, IMREAD_COLOR);
 		images.push_back(img);
 	}
@@ -299,25 +272,6 @@ void well_exposedness(vector<Mat> images, vector<Mat>& well_exposedness) // zwra
 		well_exposedness.push_back(result);
 	}
 }
-void gaussian_pyramid(vector<Mat> images, vector<vector<Mat>>& pyr)
-{
-	int r = images[0].size().height;
-	int c = images[0].size().width;
-	int nlev = floor(log(min(r, c)) / log(2));
-	vector<Mat> pom;
-	for (int i = 0; i < images.size();i++) {
-		Mat result;
-		//cout << images[i].type() << endl;
-		images[i].convertTo(result, images[i].type(), 1.0 / 255.0);
-		pom.push_back(result);
-	}
-	pyr.push_back(pom);
-	for (int i = 0;i < nlev - 1;i++) {
-		vector<Mat> result;
-		downsample(pyr[i], result);
-		pyr.push_back(result);
-	}
-}
 void gaussian_pyramid(Mat image, vector<Mat>& pyr)
 {
 	int r = image.rows;
@@ -331,40 +285,6 @@ void gaussian_pyramid(Mat image, vector<Mat>& pyr)
 		downsample(I, I);
 		pyr.push_back(I);
 	}
-}
-void laplacian_pyramid(vector<Mat> images, vector<vector<Mat>>& pyr)
-{
-	int r = images[0].size().height;
-	int c = images[0].size().width;
-	int nlev = floor(log(min(r, c)) / log(2));
-	vector<Mat> J;
-	for (int i = 0;i < images.size();i++) {
-		Mat result;
-		images[i].convertTo(result, CV_64FC3, 1.0 / 255.0);
-		J.push_back(result);
-	}
-	for (int i = 0;i < nlev - 1;i++) {
-		vector<Mat> downsampled;
-		downsample(J, downsampled);
-		int odd[2] = { 0,0 };
-		odd[0] = 2 * downsampled[0].rows - J[0].rows;
-		odd[1] = 2 * downsampled[0].cols - J[0].cols;
-		vector<Mat> upsampled;
-		upsample(downsampled, upsampled, odd);
-		vector<Mat> difference;
-		for (int i = 0; i < upsampled.size(); i++) {
-			Mat result;
-			subtract(J[i], upsampled[i], result);
-			//cout << (double)J[i].at<Vec3d>(0, 0)[2]<<endl;
-			difference.push_back(result);
-		}
-		//break;
-		pyr.push_back(difference);
-		J = downsampled;
-		//cout << odd[0] << " " << odd[1] << endl;
-		//cout << result[0].rows << " " << result[0].cols << " | "<< J[0].rows<< " "<< J[0].cols<<endl;
-	}
-	pyr.push_back(J);
 }
 void laplacian_pyramid(Mat image, vector<Mat>& pyr)
 {
@@ -387,24 +307,6 @@ void laplacian_pyramid(Mat image, vector<Mat>& pyr)
 		J = I;
 	}
 	pyr.push_back(J);
-}
-void downsample(vector<Mat> images, vector<Mat>& downsampled)
-{
-	int N = images.size();
-	double horizontal[1][5] = { 0.0625, 0.25, 0.375, 0.25, 0.0625 };
-	double vertical[5][1] = { {0.0625}, {0.25}, {0.375}, {0.25}, {0.0625} };
-	Mat kernel_horizontal = Mat(1, 5, CV_64FC1, horizontal);
-	Mat kernel_vertical = Mat(5, 1, CV_64FC1, vertical);
-	divide(kernel_horizontal, sum(kernel_horizontal), kernel_horizontal);
-	divide(kernel_vertical, sum(kernel_vertical), kernel_vertical);
-	for (int i = 0; i < N; i++) {
-		Mat result;
-		images[i].convertTo(result, CV_64FC3, 1.0 / 255.0);
-		filter2D(result, result, result.depth(), kernel_horizontal, Point(-1, -1), 0.0, BORDER_REFLECT);
-		filter2D(result, result, result.depth(), kernel_vertical, Point(-1, -1), 0.0, BORDER_REFLECT);
-		resize(result, result, Size((result.cols - 1) / 2 + 1, (result.rows - 1) / 2 + 1), 0.0, 0.0, INTER_NEAREST_EXACT);
-		downsampled.push_back(result);
-	}
 }
 void downsample(Mat InputImage, Mat& OutputImage)
 {
@@ -429,35 +331,6 @@ void downsample(Mat InputImage, Mat& OutputImage)
 	//	}
 	//}
 	OutputImage = R;
-}
-void upsample(vector<Mat> images, vector<Mat>& upsampled, int odd[2])
-{
-	double horizontal[1][5] = { 0.0625, 0.25, 0.375, 0.25, 0.0625 };
-	double vertical[5][1] = { {0.0625}, {0.25}, {0.375}, {0.25}, {0.0625} };
-	Mat kernel_horizontal = Mat(1, 5, CV_64FC1, horizontal);
-	Mat kernel_vertical = Mat(5, 1, CV_64FC1, vertical);
-	divide(kernel_horizontal, sum(kernel_horizontal), kernel_horizontal);
-	divide(kernel_vertical, sum(kernel_vertical), kernel_vertical);
-	int N = images.size();
-	int r = (images[0].size().height + 2) * 2;
-	int c = (images[0].size().width + 2) * 2;
-	int k = images[0].channels();
-	for (int i = 0; i < N; i++) {
-		Mat paddedarray;
-		copyMakeBorder(images[i], paddedarray, 1, 1, 1, 1, BORDER_REPLICATE);
-		paddedarray.convertTo(paddedarray, CV_64FC3, 1.0 / 255.0);
-		Mat result = Mat::zeros(r, c, CV_64FC3);
-		for (int x = 0;x < paddedarray.rows;x++) {
-			for (int y = 0; y < paddedarray.cols;y++) {
-				Vec3d color = paddedarray.at<Vec3d>(x, y);
-				result.at<Vec3d>(x * 2, y * 2) = paddedarray.at<Vec3d>(x, y) * 4;
-			}
-		}
-		filter2D(result, result, result.depth(), kernel_horizontal, Point(-1, -1), 0.0, BORDER_REFLECT);
-		filter2D(result, result, result.depth(), kernel_vertical, Point(-1, -1), 0.0, BORDER_REFLECT);
-		result = result(Range(2, r - 2 - odd[0]), Range(2, c - 2 - odd[1]));
-		upsampled.push_back(result);
-	}
 }
 void upsample(Mat InputImage, Mat& OutputImage, int odd[2])
 {
@@ -484,26 +357,6 @@ void upsample(Mat InputImage, Mat& OutputImage, int odd[2])
 	result = result(Range(2, r - 2 - odd[0]), Range(2, c - 2 - odd[1]));
 	OutputImage = result;
 }
-void normalise_weights(vector<Mat> W, vector<Mat>& result) //nie używam
-{
-	int N = W.size();
-	Mat sum = W[0];
-	for (int i = 1; i < N;i++) {
-		for (int x = 0;x < sum.rows;x++) {
-			for (int y = 0; y < sum.cols;y++) {
-				sum.at<double>(x, y) += W[i].at<double>(x, y);
-			}
-		}
-	}
-	for (int i = 1; i < N;i++) {
-		for (int x = 0;x < sum.rows;x++) {
-			for (int y = 0; y < sum.cols;y++) {
-				W[i].at<double>(x, y) /= sum.at<double>(x, y);
-			}
-		}
-	}
-	result = W;
-}
 void reconstruct_laplacian_pyramid(vector<Mat> pyr, Mat& image)
 {
 	int r = pyr[0].rows;
@@ -512,7 +365,6 @@ void reconstruct_laplacian_pyramid(vector<Mat> pyr, Mat& image)
 	Mat R;
 	pyr[nlev - 1].copyTo(R);
 	for (int i = nlev - 2;i >= 0;i--) {
-		//cout << "[ " << (double)R.at<Vec3d>(2, 2)[2] << " " << (double)R.at<Vec3d>(2, 2)[1] << " " << (double)R.at<Vec3d>(2, 2)[0] << " ]" << endl;
 		int odd[2] = { 0 , 0 };
 		odd[0] = 2 * R.rows - pyr[i].rows;
 		odd[1] = 2 * R.cols - pyr[i].cols;
@@ -520,7 +372,6 @@ void reconstruct_laplacian_pyramid(vector<Mat> pyr, Mat& image)
 		upsample(R, us, odd);
 		Mat py;
 		pyr[i].copyTo(py);
-		//cout << (double)pyr[i].at<Vec3d>(2, 2)[0] << " + " << (double)us.at<Vec3d>(2, 2)[0] << " = " << (double)R.at<Vec3d>(2, 2)[0] << endl;
 		R = py + us;
 	}
 	R.copyTo(image);
